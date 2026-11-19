@@ -1,0 +1,29 @@
+{
+  "name": "building-energy-evidence-assistant",
+  "version": "1.0.0",
+  "private": true,
+  "description": "GenAI assistant that explains ASHRAE building energy evidence with traceable, verified figures (Next.js + Qwen3.5-2B).",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx tests/smoke.ts",
+    "eval": "tsx eval/run_eval.ts"
+  },
+  "dependencies": {
+    "next": "^16.4.5",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  },
+  "engines": {
+    "node": ">=20.9.0"
+  }
+}

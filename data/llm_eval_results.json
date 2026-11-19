@@ -1,0 +1,1 @@
+{ "available": false, "note": "Run `npm run eval -- --llm server` (or --llm ollama) to evaluate the language model and write this file." }

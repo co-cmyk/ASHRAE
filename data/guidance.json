@@ -1,0 +1,165 @@
+{
+  "about": "Small, curated collection of energy-efficiency guidance used by the assistant for 'What improvements should I consider?' questions. Each card paraphrases a public source; the assistant only cites cards, it never invents measures or savings figures. Review status is recorded per card - have a qualified energy adviser approve the collection before production use.",
+  "cards": [
+    {
+      "id": "staged-approach",
+      "title": "Plan upgrades in stages: operations first, plant last",
+      "summary": "ENERGY STAR's Building Upgrade Manual recommends a five-stage sequence: retrocommissioning, lighting, supplemental load reductions, air distribution systems, then heating and cooling plant. Earlier stages reduce the loads that later equipment must meet, so replacements can be smaller and cheaper.",
+      "actions": [
+        "Start with retrocommissioning and operational fixes before capital projects.",
+        "Upgrade lighting and reduce equipment and envelope loads next.",
+        "Adjust or upgrade fan systems, then resize heating and cooling plant to the reduced loads."
+      ],
+      "needs": ["Inventory of current systems and their condition", "Planned replacement dates for major equipment"],
+      "triggers": ["improvements_any", "heating_replacement", "cooling_replacement", "savings_question"],
+      "keywords": ["upgrade", "plan", "stages", "replace", "retrofit", "improve", "sequence", "capital"],
+      "meters": ["electricity", "chilledwater", "steam", "hotwater"],
+      "source": { "publisher": "US EPA ENERGY STAR", "title": "ENERGY STAR Building Upgrade Manual (2008 edition)", "url": "https://www.energystar.gov/sites/default/files/buildings/tools/EPA_BUM_Full.pdf", "year": "2008" },
+      "verification": { "status": "source-checked", "checked_on": "2026-11-19", "note": "Paraphrased from the manual's staged-approach chapters; link checked on this date. Requires adviser review." }
+    },
+    {
+      "id": "retrocommissioning",
+      "title": "Retrocommissioning: find underperforming equipment and controls",
+      "summary": "Retrocommissioning is the first stage in the ENERGY STAR approach. It identifies equipment that is underperforming, decides which equipment should be replaced, and tunes operation of lighting, supplemental loads and distribution systems. Ongoing commissioning keeps monitoring in place so problems are caught early.",
+      "actions": [
+        "Review control sequences, schedules and setpoints against how the building is actually used.",
+        "Check that sensors and actuators work and are calibrated.",
+        "Keep trend logging in place to detect drift after the fixes."
+      ],
+      "needs": ["Access to the building automation system (BAS) or control settings", "Operating hours and occupancy patterns"],
+      "triggers": ["anomaly_higher", "high_intensity", "temperature_sensitive", "night_load", "improvements_any"],
+      "keywords": ["commissioning", "controls", "schedule", "setpoint", "sensor", "tune", "operations", "bms", "bas"],
+      "meters": ["electricity", "chilledwater", "steam", "hotwater"],
+      "source": { "publisher": "US EPA ENERGY STAR", "title": "Building Upgrade Manual, Chapter 5: Retrocommissioning", "url": "https://www.energystar.gov/sites/default/files/buildings/tools/EPA_BUM_Full.pdf", "year": "2008" },
+      "verification": { "status": "source-checked", "checked_on": "2026-11-19", "note": "Paraphrased; link checked on this date. Requires adviser review." }
+    },
+    {
+      "id": "re-tuning",
+      "title": "Building re-tuning: no- and low-cost operational changes",
+      "summary": "Pacific Northwest National Laboratory's Building Re-tuning approach uses building automation data to find operational problems that waste energy, such as equipment running when the building is empty, and corrects them at little or no cost. PNNL reports that re-tuning can reduce building energy use by about 5 to 20 percent; actual results depend on the building.",
+      "actions": [
+        "Compare equipment run-times with occupied hours; switch off or set back out of hours.",
+        "Check heating and cooling setpoints, dead-bands and simultaneous heating and cooling.",
+        "Review weekend and holiday schedules."
+      ],
+      "needs": ["Occupied hours", "Building automation trend data or a site walk-round", "Who operates the building"],
+      "triggers": ["night_load", "weekend_load", "high_baseload", "anomaly_higher", "improvements_any"],
+      "keywords": ["night", "out of hours", "weekend", "schedule", "baseload", "operations", "low cost", "no cost", "setback"],
+      "meters": ["electricity", "chilledwater", "steam", "hotwater"],
+      "source": { "publisher": "Pacific Northwest National Laboratory (PNNL)", "title": "Building Re-tuning", "url": "https://buildingretuning.pnnl.gov/index.stm", "year": "n.d." },
+      "verification": { "status": "source-checked", "checked_on": "2026-11-19", "note": "Savings range paraphrased from the PNNL page; link checked on this date. Requires adviser review." }
+    },
+    {
+      "id": "load-shape",
+      "title": "Read the load shape: base load, peaks and temperature response",
+      "summary": "Lawrence Berkeley National Laboratory shows how whole-building interval data can guide commissioning: plot the load shape, track parameters such as near-base load and near-peak load, and use a time-of-week-and-temperature model for weather normalisation. A building that is unusually sensitive to outdoor temperature can indicate HVAC operating problems.",
+      "actions": [
+        "Track base load (night/weekend) and peak load over time.",
+        "Weather-normalise before comparing periods.",
+        "Investigate if consumption rises much faster with temperature than expected."
+      ],
+      "needs": ["Interval meter data (available)", "Notes on operational changes during the year"],
+      "triggers": ["night_load", "high_baseload", "temperature_sensitive", "anomaly_any"],
+      "keywords": ["load shape", "baseload", "base load", "peak", "temperature", "weather", "interval data"],
+      "meters": ["electricity", "chilledwater", "steam", "hotwater"],
+      "source": { "publisher": "Lawrence Berkeley National Laboratory", "title": "Price, Mathieu, Kiliccote & Piette (2011) Using Whole-Building Electric Load Data in Continuous or Retro-Commissioning (LBNL-5057E)", "url": "https://eta-publications.lbl.gov/publications/using-whole-building-electric-load", "year": "2011" },
+      "verification": { "status": "source-checked", "checked_on": "2026-11-19", "note": "Paraphrased from the paper abstract; link checked on this date." }
+    },
+    {
+      "id": "lighting",
+      "title": "Lighting: efficient sources, luminaires and automatic controls",
+      "summary": "The lighting stage improves lighting systems to cut lighting energy, improve the visual environment and reduce internal heat gains, which also affects how HVAC and electrical systems are sized. The manual covers efficient light sources, efficient luminaires, automatic controls and an operations and maintenance plan.",
+      "actions": [
+        "Survey existing lamps, luminaires and operating hours.",
+        "Consider efficient sources and luminaires with occupancy and daylight controls.",
+        "Plan maintenance so savings persist."
+      ],
+      "needs": ["Current lighting type and hours of use", "Space types and illuminance requirements"],
+      "triggers": ["high_baseload", "night_load", "lighting_question"],
+      "keywords": ["lighting", "led", "lamps", "luminaire", "occupancy sensor", "daylight"],
+      "meters": ["electricity"],
+      "source": { "publisher": "US EPA ENERGY STAR", "title": "Building Upgrade Manual, Chapter 6: Lighting", "url": "https://www.energystar.gov/sites/default/files/buildings/tools/EPA_BUM_Full.pdf", "year": "2008" },
+      "verification": { "status": "source-checked", "checked_on": "2026-11-19", "note": "Paraphrased; link checked on this date. Requires adviser review." }
+    },
+    {
+      "id": "supplemental-loads",
+      "title": "Reduce supplemental loads: equipment and building envelope",
+      "summary": "Supplemental loads are secondary contributors such as people, computers, lights and the building itself. The manual recommends reducing equipment energy use and upgrading the envelope (insulation, fenestration, roofing) before heating and cooling loads are re-assessed, because these changes alter the loads the plant must meet.",
+      "actions": [
+        "Identify large plug and process loads and their schedules.",
+        "Assess insulation, windows and roof condition at the next renewal opportunity.",
+        "Re-assess heating and cooling loads after these changes."
+      ],
+      "needs": ["Envelope condition (insulation, glazing, roof)", "Major equipment inventory"],
+      "triggers": ["temperature_sensitive", "high_intensity", "envelope_question"],
+      "keywords": ["insulation", "windows", "glazing", "roof", "envelope", "equipment", "plug loads", "computers"],
+      "meters": ["electricity", "chilledwater", "steam", "hotwater"],
+      "source": { "publisher": "US EPA ENERGY STAR", "title": "Building Upgrade Manual, Chapter 7: Supplemental Load Reduction", "url": "https://www.energystar.gov/sites/default/files/buildings/tools/EPA_BUM_Full.pdf", "year": "2008" },
+      "verification": { "status": "source-checked", "checked_on": "2026-11-19", "note": "Paraphrased; link checked on this date. Requires adviser review." }
+    },
+    {
+      "id": "air-distribution",
+      "title": "Air distribution: adjust or upgrade fan systems",
+      "summary": "The air distribution stage upgrades or adjusts fan systems to improve efficiency, for example matching airflow to actual demand. Fans that run continuously contribute to a high night-time base load.",
+      "actions": [
+        "Check fan schedules against occupancy.",
+        "Consider demand-based airflow control where loads vary.",
+        "Confirm minimum outdoor-air settings are appropriate."
+      ],
+      "needs": ["Air handling unit list and schedules", "Ventilation requirements"],
+      "triggers": ["night_load", "high_baseload", "weekend_load"],
+      "keywords": ["fans", "ventilation", "air handling", "ahu", "airflow", "vsd", "variable speed"],
+      "meters": ["electricity"],
+      "source": { "publisher": "US EPA ENERGY STAR", "title": "Building Upgrade Manual, Chapter 8: Air Distribution Systems", "url": "https://www.energystar.gov/sites/default/files/buildings/tools/EPA_BUM_Full.pdf", "year": "2008" },
+      "verification": { "status": "source-checked", "checked_on": "2026-11-19", "note": "Paraphrased; link checked on this date. Requires adviser review." }
+    },
+    {
+      "id": "heating-cooling-plant",
+      "title": "Heating and cooling plant: replace last, and size to the reduced load",
+      "summary": "The heating and cooling stage comes after the load reductions of earlier stages, so a replacement can be properly sized, or the existing system retrofitted to optimise operation. The manual notes that determining the new heating and cooling loads accurately may require an energy engineer or other expert.",
+      "actions": [
+        "Optimise operation and maintenance of the existing plant first.",
+        "Re-calculate heating and cooling loads after other measures.",
+        "Compare replacement options on whole-life cost, not only efficiency."
+      ],
+      "needs": ["Current plant type, capacity, age and efficiency", "Proposed replacement and its efficiency", "Installed cost, energy prices and any financing terms"],
+      "triggers": ["heating_replacement", "cooling_replacement", "temperature_sensitive", "savings_question"],
+      "keywords": ["boiler", "chiller", "heat pump", "heating system", "cooling system", "furnace", "plant", "replace", "replacement"],
+      "meters": ["electricity", "chilledwater", "steam", "hotwater"],
+      "source": { "publisher": "US EPA ENERGY STAR", "title": "Building Upgrade Manual, Chapter 9: Heating and Cooling", "url": "https://www.energystar.gov/sites/default/files/buildings/tools/EPA_BUM_Full.pdf", "year": "2008" },
+      "verification": { "status": "source-checked", "checked_on": "2026-11-19", "note": "Paraphrased; link checked on this date. Requires adviser review." }
+    },
+    {
+      "id": "measurement-verification",
+      "title": "Verifying savings needs a calibrated baseline",
+      "summary": "Savings are measured against a baseline model of what the building would have used. ASHRAE Guideline 14 calls a whole-building model calibrated when, with hourly data, NMBE is within 10 percent and CV(RMSE) within 30 percent (monthly data: 5 and 15 percent). Expected savings must be larger than the model's own error to be discernible.",
+      "actions": [
+        "Fix the baseline period and model before any change is made.",
+        "Check the baseline meets the Guideline 14 criteria.",
+        "Measure savings over a comparable post-change period and adjust for weather."
+      ],
+      "needs": ["Date of each change", "A post-change metering period"],
+      "triggers": ["savings_question", "heating_replacement", "cooling_replacement"],
+      "keywords": ["verify", "measurement", "savings", "baseline", "m&v", "guideline 14", "how much"],
+      "meters": ["electricity", "chilledwater", "steam", "hotwater"],
+      "source": { "publisher": "NREL (citing ASHRAE Guideline 14)", "title": "Calibration targets for time-series data, NREL/CP-5500-70865", "url": "https://www.nrel.gov/docs/fy19osti/70865.pdf", "year": "2019" },
+      "verification": { "status": "source-checked", "checked_on": "2026-11-19", "note": "Thresholds as stated in the NREL paper; link checked on this date." }
+    },
+    {
+      "id": "benchmarking",
+      "title": "Benchmark against similar buildings before choosing measures",
+      "summary": "Benchmarking compares a building's energy intensity with similar buildings to judge whether it is a priority for investment. The ENERGY STAR manual treats benchmarking as the starting point of an upgrade programme; comparisons are only meaningful when buildings have similar use, climate and data quality.",
+      "actions": [
+        "Compare intensity with buildings of the same use and climate.",
+        "Repeat the comparison each year to track progress.",
+        "Treat a large gap as a reason to investigate, not as proof of waste."
+      ],
+      "needs": ["Occupancy and operating hours to normalise the comparison", "Confirmed floor area"],
+      "triggers": ["high_intensity", "compare_question"],
+      "keywords": ["benchmark", "compare", "peers", "intensity", "eui", "rank"],
+      "meters": ["electricity", "chilledwater", "steam", "hotwater"],
+      "source": { "publisher": "US EPA ENERGY STAR", "title": "Building Upgrade Manual, Chapter 2: Benchmarking", "url": "https://www.energystar.gov/sites/default/files/buildings/tools/EPA_BUM_Full.pdf", "year": "2008" },
+      "verification": { "status": "source-checked", "checked_on": "2026-11-19", "note": "Paraphrased; link checked on this date. Requires adviser review." }
+    }
+  ]
+}

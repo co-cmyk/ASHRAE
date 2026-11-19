@@ -1,0 +1,12 @@
+node_modules/
+.next/
+out/
+.vercel
+.env
+.env*.local
+next-env.d.ts
+*.tsbuildinfo
+eval/template_eval_results.json
+__pycache__/
+.ipynb_checkpoints/
+.DS_Store

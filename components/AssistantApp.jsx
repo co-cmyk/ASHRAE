@@ -5,19 +5,13 @@ import ModelPanel from "./ModelPanel";
 import ReportModal from "./ReportModal";
 import { AnswerBody, VerificationBadge, sourceLabel } from "./Answer";
 import { readNdjson } from "../lib-client/ndjson";
-import { BROWSER_MODELS, generateInBrowser, loadBrowserModel, onWorkerMessage, resetBrowserModel, webgpuAvailable } from "../lib-client/browserLlm";
-
-function browserErrorText(e, modelId) {
-  if (e.deviceLost) {
-    const small = /0\.8B/.test(modelId);
-    return `Your GPU stopped responding while running ${modelId.split("/").pop().replace(/-ONNX.*$/, "")} (the browser reset the GPU, usually because it ran out of graphics memory). ` +
-      (small ? "Close other GPU-heavy tabs and reload the model, or use server mode." : "Try the Qwen3.5-0.8B option, close other GPU-heavy tabs, or use server mode.") +
-      " Showing the approved answer.";
-  }
-  return `The in-browser model failed (${String(e.message).slice(0, 140)}). Showing the approved answer.`;
-}
+import { BROWSER_MODELS, SMALL_MODEL_ID, explainBrowserError, generateInBrowser, likelyLowMemoryGpu, loadBrowserModel, onWorkerMessage, probeGpu, resetBrowserModel } from "../lib-client/browserLlm";
 import { verifyAnswer } from "../lib/verify";
 import { METER_LABEL, num } from "../lib/format";
+
+function browserErrorText(e) {
+  return `${explainBrowserError(e)} Showing the approved answer.`;
+}
 
 const STARTERS = [
   "Summarise this building's energy use.",
@@ -39,7 +33,7 @@ export default function AssistantApp() {
   const [activeId, setActiveId] = useState(null);
   const [mode, setMode] = useState("template");
   const [serverLlm, setServerLlm] = useState({ enabled: false, model: null });
-  const [browser, setBrowser] = useState({ supported: null, status: "idle", modelId: BROWSER_MODELS[0].id, statusText: "", progress: null, error: null });
+  const [browser, setBrowser] = useState({ supported: null, gpu: null, device: "webgpu", status: "idle", modelId: BROWSER_MODELS[0].id, statusText: "", progress: null, error: null });
   const [highlight, setHighlight] = useState(null);
   const [tab, setTab] = useState("evidence");
   const [chart, setChart] = useState({ kind: "daily", meter: null });
@@ -62,7 +56,16 @@ export default function AssistantApp() {
       setServerLlm(h.serverLlm);
       if (h.serverLlm.enabled) setMode("server");
     });
-    webgpuAvailable().then((ok) => setBrowser((b) => ({ ...b, supported: ok })));
+    probeGpu().then((info) =>
+      setBrowser((b) => ({
+        ...b,
+        supported: !!info.ok,
+        gpu: info,
+        device: info.ok ? "webgpu" : "wasm",
+        // laptops / integrated GPUs and CPU mode start with the smaller model
+        modelId: !info.ok || likelyLowMemoryGpu(info) ? SMALL_MODEL_ID : b.modelId,
+      })),
+    );
     return onWorkerMessage((m) => {
       if (m.type === "status") setBrowser((b) => ({ ...b, statusText: m.text }));
       if (m.type === "progress" && m.file) {
@@ -70,8 +73,12 @@ export default function AssistantApp() {
         const all = Object.values(files.current);
         setBrowser((b) => ({ ...b, progress: { loaded: all.reduce((a, f) => a + f.loaded, 0), total: all.reduce((a, f) => a + f.total, 0) } }));
       }
+      if (m.type === "gpu") setBrowser((b) => ({ ...b, gpu: m.info, supported: !!m.info.ok }));
       if (m.type === "ready") setBrowser((b) => ({ ...b, status: "ready", error: null }));
-      if (m.type === "error" && m.stage !== "generate") setBrowser((b) => ({ ...b, status: "error", error: m.message }));
+      if (m.type === "error" && m.stage !== "generate") {
+        if (m.code === "no-adapter" || m.code === "no-webgpu") resetBrowserModel();
+        setBrowser((b) => ({ ...b, status: "error", error: explainBrowserError(m), errorCode: m.code ?? null }));
+      }
     });
   }, []);
 
@@ -121,17 +128,17 @@ export default function AssistantApp() {
         if (ev.type === "final") {
           update(aid, { text: ev.answer, source: ev.source, verification: ev.verification, status: ev.pendingBrowser ? "streaming" : "done", error: ev.error, note: mode === "browser" && !browserReady ? "In-browser model not loaded yet — showing the approved template." : null });
           if (ev.pendingBrowser && plan) {
-            update(aid, { text: "", source: `browser:${modelName(browser.modelId)}` });
+            update(aid, { text: "", source: `browser:${modelName(browser.modelId)}${browser.device === "wasm" ? " (CPU)" : ""}` });
             try {
               const out = await generateInBrowser(plan.browserMessages, (t) => update(aid, (m) => ({ text: (m.text || "") + t })));
               const v = verifyAnswer(out, plan.approvedNumbers, plan.evidence.map((e) => e.id), plan.requiresMissingAck);
               update(aid, { text: out, verification: v, status: "done" });
             } catch (e) {
               const v = verifyAnswer(plan.template, plan.approvedNumbers, plan.evidence.map((x) => x.id), plan.requiresMissingAck);
-              update(aid, { text: plan.template, source: "template", verification: v, status: "done", error: browserErrorText(e, browser.modelId) });
+              update(aid, { text: plan.template, source: "template", verification: v, status: "done", error: browserErrorText(e) });
               if (e.deviceLost) {
                 resetBrowserModel();
-                setBrowser((b) => ({ ...b, status: "error", error: "the GPU was reset — reload the model (the 0.8B option needs less memory)" }));
+                setBrowser((b) => ({ ...b, status: "error", error: explainBrowserError(e), modelId: SMALL_MODEL_ID }));
               }
             }
           }
@@ -185,10 +192,14 @@ export default function AssistantApp() {
             serverLlm={serverLlm}
             browser={browser}
             setBrowserModel={(id) => setBrowser((b) => ({ ...b, modelId: id, status: b.status === "ready" ? "idle" : b.status }))}
+            setBrowserDevice={(device) => {
+              resetBrowserModel();
+              setBrowser((b) => ({ ...b, device, status: "idle", error: null, modelId: device === "wasm" ? SMALL_MODEL_ID : b.modelId }));
+            }}
             loadBrowser={() => {
               files.current = {};
               setBrowser((b) => ({ ...b, status: "loading", progress: null, error: null }));
-              loadBrowserModel(browser.modelId);
+              loadBrowserModel(browser.modelId, browser.device);
             }}
           />
         </div>

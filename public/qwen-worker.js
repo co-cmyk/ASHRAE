@@ -1,4 +1,5 @@
-// Web Worker: runs Qwen3.5 (2B or 0.8B, ONNX) in the browser with Transformers.js + WebGPU.
+// Web Worker: runs Qwen3.5 (2B or 0.8B, ONNX) in the browser with Transformers.js.
+// device "webgpu" uses the GPU; device "wasm" runs on the CPU (slow, but needs no GPU).
 // Nothing is sent to a server: the model files are downloaded once from the Hugging Face Hub
 // and cached by the browser. Loaded as a module worker from /qwen-worker.js.
 const TRANSFORMERS_URL = "https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.2.0";
@@ -6,7 +7,7 @@ const TRANSFORMERS_URL = "https://cdn.jsdelivr.net/npm/@huggingface/transformers
 let tf = null;
 let processor = null;
 let model = null;
-let loadedId = null;
+let loadedKey = null;
 let loading = null;
 
 function post(msg) {
@@ -22,47 +23,92 @@ function progress(p) {
   }
 }
 
-async function load(modelId) {
-  if (model && loadedId === modelId) {
-    post({ type: "ready", modelId });
+/** Ask for a GPU adapter in this worker - the same context ONNX Runtime will use. */
+async function probeGpu() {
+  if (typeof navigator === "undefined" || !("gpu" in navigator)) {
+    return { ok: false, reason: "no-webgpu" };
+  }
+  let adapter = null;
+  try {
+    adapter = await navigator.gpu.requestAdapter({ powerPreference: "high-performance" });
+  } catch (_) {
+    adapter = null;
+  }
+  if (!adapter) return { ok: false, reason: "no-adapter" };
+  const info = adapter.info || {};
+  return {
+    ok: true,
+    vendor: info.vendor || "",
+    architecture: info.architecture || "",
+    description: info.description || "",
+    isFallback: !!(info.isFallbackAdapter || adapter.isFallbackAdapter),
+    shaderF16: adapter.features ? adapter.features.has("shader-f16") : false,
+    maxBufferMB: adapter.limits ? Math.round(adapter.limits.maxBufferSize / 1048576) : null,
+  };
+}
+
+async function load(modelId, device) {
+  const key = `${modelId}|${device}`;
+  if (model && loadedKey === key) {
+    post({ type: "ready", modelId, device });
     return;
   }
   if (loading) return loading;
   loading = (async () => {
+    if (device === "webgpu") {
+      // Check before downloading ~1-2 GB: Chrome can refuse a GPU adapter, e.g. after the GPU was
+      // reset twice on this site (it then blocks WebGPU for the site until Chrome restarts).
+      const gpu = await probeGpu();
+      post({ type: "gpu", info: gpu });
+      if (!gpu.ok) {
+        const err = new Error(gpu.reason === "no-webgpu" ? "WebGPU is not available in this browser" : "Failed to get GPU adapter");
+        err.code = gpu.reason;
+        throw err;
+      }
+    }
+    model = null;
+    loadedKey = null;
     post({ type: "status", text: "Loading Transformers.js…" });
     tf = tf || (await import(TRANSFORMERS_URL));
     const { AutoProcessor, Qwen3_5ForConditionalGeneration } = tf;
-    post({ type: "status", text: `Downloading ${modelId} (first time only)…` });
+    post({ type: "status", text: `Downloading ${modelId.split("/").pop()} (first time only)…` });
     processor = await AutoProcessor.from_pretrained(modelId, { progress_callback: progress });
-    // Try the dtype layouts published for Qwen3.5 ONNX exports, most compact first.
-    // The vision encoder is never used here (text only), so try its smallest variant first to save GPU memory.
-    const layouts = [
-      { embed_tokens: "q4", vision_encoder: "q4", decoder_model_merged: "q4" },
-      { embed_tokens: "q4", vision_encoder: "fp16", decoder_model_merged: "q4" },
-      { embed_tokens: "q4f16", vision_encoder: "fp16", decoder_model_merged: "q4f16" },
-      "q4f16",
-      "q4",
-    ];
+    // The vision encoder is never used here (text only), so its smallest variant is tried first.
+    const layouts =
+      device === "webgpu"
+        ? [
+            { embed_tokens: "q4", vision_encoder: "q4", decoder_model_merged: "q4" },
+            { embed_tokens: "q4", vision_encoder: "fp16", decoder_model_merged: "q4" },
+            { embed_tokens: "q4f16", vision_encoder: "fp16", decoder_model_merged: "q4f16" },
+            "q4f16",
+            "q4",
+          ]
+        : [{ embed_tokens: "q4", vision_encoder: "q4", decoder_model_merged: "q4" }, "q4", "q8"];
+    post({ type: "status", text: device === "webgpu" ? "Preparing the model on your GPU…" : "Preparing the model on your CPU…" });
     let lastErr = null;
     for (const dtype of layouts) {
       try {
-        model = await Qwen3_5ForConditionalGeneration.from_pretrained(modelId, { dtype, device: "webgpu", progress_callback: progress });
+        model = await Qwen3_5ForConditionalGeneration.from_pretrained(modelId, { dtype, device, progress_callback: progress });
         lastErr = null;
         break;
       } catch (e) {
         lastErr = e;
+        // no point trying other file layouts if the GPU itself is unavailable
+        if (/adapter|no available backend|device (was )?lost/i.test(String((e && e.message) || e))) break;
       }
     }
     if (lastErr) throw lastErr;
-    loadedId = modelId;
-    post({ type: "ready", modelId });
+    loadedKey = key;
+    post({ type: "ready", modelId, device });
   })();
   try {
     await loading;
   } catch (e) {
     model = null;
-    loadedId = null;
-    post({ type: "error", stage: "load", message: String((e && e.message) || e) });
+    loadedKey = null;
+    const message = String((e && e.message) || e);
+    const code = e && e.code ? e.code : /Failed to get GPU adapter|no available backend/i.test(message) ? "no-adapter" : "load-failed";
+    post({ type: "error", stage: "load", code, message });
   } finally {
     loading = null;
   }
@@ -106,14 +152,15 @@ async function generate(id, messages, maxNewTokens) {
     if (deviceLost) {
       model = null;
       processor = null;
-      loadedId = null;
+      loadedKey = null;
     }
     post({ type: "error", id, stage: "generate", deviceLost, message });
   }
 }
 
-self.onmessage = (e) => {
+self.onmessage = async (e) => {
   const msg = e.data || {};
-  if (msg.type === "load") load(msg.modelId);
+  if (msg.type === "probe") post({ type: "gpu", info: await probeGpu() });
+  if (msg.type === "load") load(msg.modelId, msg.device === "wasm" ? "wasm" : "webgpu");
   if (msg.type === "generate") generate(msg.id, msg.messages, msg.maxNewTokens);
 };

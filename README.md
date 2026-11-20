@@ -53,7 +53,7 @@ flowchart LR
 
 | Mode | Where the model runs | Cost | Set-up |
 |---|---|---|---|
-| **In-browser (default demo)** | The visitor's GPU via WebGPU (`onnx-community/Qwen3.5-2B-ONNX-OPT`, Transformers.js v4) | Free | None. The visitor clicks *Load model*, and the first load downloads about 1.5–2 GB |
+| **In-browser (default demo)** | The visitor's GPU via WebGPU (`onnx-community/Qwen3.5-2B-ONNX-OPT`, Transformers.js v4), or the CPU when no GPU is available (slow; 0.8B recommended) | Free | None. The visitor clicks *Load model*, and the first load downloads about 1.5–2 GB (2B) |
 | **Server** | Any OpenAI-compatible endpoint: Hugging Face Space (`llm-server/`), Ollama, vLLM, or a Colab tunnel (`notebooks/03`) | Free (CPU Space) or paid GPU | Set `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL` in Vercel |
 | **Approved template** | No model, deterministic wording | Free | None. Always available as the fallback |
 
@@ -125,7 +125,7 @@ eval/                CLI evaluation (template or LLM)
 * Units differ by site. They are converted to kWh where the Building Data Genome 2 unit table gives a factor, steam stays in lbs, and other units are marked unverified.
 * Peer comparisons are normalised by floor area only. Cross-site groups mix climates.
 * The guidance cards paraphrase public sources (ENERGY STAR Building Upgrade Manual, PNNL Building Re-tuning, LBNL, ASHRAE Guideline 14 via NREL). A qualified energy adviser should review them before production use.
-* Browser mode needs WebGPU (desktop Chrome or Edge) and a capable GPU. Server mode on a free CPU Space is slow: lower `LLM_MAX_TOKENS` if responses hit Vercel's 60 s limit.
+* Browser mode works best with WebGPU (desktop Chrome or Edge) and a capable GPU; the 2B model can exhaust laptop GPU memory, so use 0.8B there. If the GPU is reset twice on a site, Chrome blocks WebGPU for that site until it restarts; the app detects this and offers CPU mode. Server mode on a free CPU Space is slow: lower `LLM_MAX_TOKENS` if responses hit Vercel's 60 s limit.
 
 ## Credits
 

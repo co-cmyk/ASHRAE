@@ -11,7 +11,7 @@ A GenAI assistant for building energy advice, built on the **ASHRAE Great Energy
 | "Would replacing the heating system save money?" | Detects that a savings estimate is being requested | Says what it **cannot** estimate yet and lists the information it needs |
 | "Prepare a report for an energy adviser." | Combines profile, analysis, evidence and open questions | Writes the executive summary of a downloadable report |
 
-![Assistant](docs/screenshot-assistant.png)
+The interface includes a compact building selector beside the question composer, a chat with evidence and charts, and a choice between verified template answers and local in-browser generation.
 
 ## What makes it trustworthy
 
@@ -49,13 +49,13 @@ flowchart LR
 
 ## Can Vercel run Qwen3.5-2B?
 
-**Not on Vercel's servers.** Vercel Functions have no GPU and a ~250 MB bundle cap, so a 2 B-parameter model cannot run inside them. This app gives you three options that all deploy on Vercel:
+**Not on Vercel's servers.** Vercel Functions have no GPU, so a 2 B-parameter model cannot run inside them. The visible assistant interface offers the approved template and in-browser options. A separate server endpoint remains supported for API/CLI evaluation, but its selection control is intentionally not shown in the interface:
 
 | Mode | Where the model runs | Cost | Set-up |
 |---|---|---|---|
-| **In-browser (default demo)** | The visitor's GPU via WebGPU (`onnx-community/Qwen3.5-2B-ONNX-OPT`, Transformers.js v4), or the CPU when no GPU is available (slow; 0.8B recommended) | Free | None. The visitor clicks *Load model*, and the first load downloads about 1.5–2 GB (2B) |
-| **Server** | Any OpenAI-compatible endpoint: Hugging Face Space (`llm-server/`), Ollama, vLLM, or a Colab tunnel (`notebooks/03`) | Free (CPU Space) or paid GPU | Set `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL` in Vercel |
-| **Approved template** | No model, deterministic wording | Free | None. Always available as the fallback |
+| **In-browser (select in the interface)** | The visitor's GPU via WebGPU (`onnx-community/Qwen3.5-2B-ONNX-OPT`, Transformers.js v4), or the CPU when no GPU is available (slow; 0.8B recommended) | Free | None. The visitor clicks *Load model*, and the first load downloads about 1.5–2 GB (2B) |
+| **Server (API/CLI only)** | Any OpenAI-compatible endpoint: Hugging Face Space (`llm-server/`), Ollama, vLLM, or a Colab tunnel (`notebooks/03`) | Free (CPU Space) or paid GPU | Set `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL` in Vercel |
+| **Approved template (default)** | No model, deterministic wording | Free | None. Always available as the fallback |
 
 ## Deploy (GitHub → Vercel)
 
@@ -130,3 +130,10 @@ eval/                CLI evaluation (template or LLM)
 ## Credits
 
 ASHRAE GEPIII data (Kaggle) · Building Data Genome 2 (units) · LBNL TOWT baseline (Mathieu et al., 2011) · Qwen3.5-2B (Qwen team, Apache-2.0) · Transformers.js (Hugging Face) · llama.cpp.
+
+## Interface changes (20 November 2026)
+
+* Removed the large Buildings list and the heading/report bar above the conversation. The compact building selector next to the question composer retains building switching without the sidebar list. Building selection changes clear previous conversation/evidence. The report remains available through the “Prepare a report for an energy adviser” starter.
+* Removed the server-based Qwen option and the explanatory verification paragraph from the visible model panel. The browser-based Qwen option is unchanged; server-backed endpoints are still available for the evaluation CLI/API.
+* Removed the yellow language-model-evaluation setup notice; recorded model results still appear when provided.
+* Applied Computer Modern Sans throughout the interface, loaded via the public jsDelivr stylesheet; a generic sans-serif is used as a fallback when offline.

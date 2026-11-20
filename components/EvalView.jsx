@@ -47,11 +47,6 @@ export default function EvalView() {
           <Tile key={k} label={label} help={help} value={t.summary[k]} compare={llm ? llm.summary[k] : undefined} />
         ))}
       </div>
-      {!llm && (
-        <div className="note">
-          <strong>Language-model run not recorded yet.</strong> Point <code>LLM_BASE_URL</code> at your Qwen3.5-2B endpoint and run <code>npm run eval -- --llm</code>; commit the resulting <code>data/llm_eval_results.json</code> to show Qwen&apos;s scores here next to the template baseline.
-        </div>
-      )}
       {llm && <p className="muted small">Language-model run: {llm.model}, {llm.generated_at?.slice(0, 16).replace("T", " ")}, {llm.results.length} questions, {llm.seconds}s.</p>}
 
       <h2>Prediction model</h2>

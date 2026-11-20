@@ -7,7 +7,6 @@ import { AnswerBody, VerificationBadge, sourceLabel } from "./Answer";
 import { readNdjson } from "../lib-client/ndjson";
 import { BROWSER_MODELS, SMALL_MODEL_ID, explainBrowserError, generateInBrowser, likelyLowMemoryGpu, loadBrowserModel, onWorkerMessage, probeGpu, resetBrowserModel } from "../lib-client/browserLlm";
 import { verifyAnswer } from "../lib/verify";
-import { METER_LABEL, num } from "../lib/format";
 
 function browserErrorText(e) {
   return `${explainBrowserError(e)} Showing the approved answer.`;
@@ -32,7 +31,6 @@ export default function AssistantApp() {
   const [messages, setMessages] = useState([]);
   const [activeId, setActiveId] = useState(null);
   const [mode, setMode] = useState("template");
-  const [serverLlm, setServerLlm] = useState({ enabled: false, model: null });
   const [browser, setBrowser] = useState({ supported: null, gpu: null, device: "webgpu", status: "idle", modelId: BROWSER_MODELS[0].id, statusText: "", progress: null, error: null });
   const [highlight, setHighlight] = useState(null);
   const [tab, setTab] = useState("evidence");
@@ -51,10 +49,6 @@ export default function AssistantApp() {
       const fromUrl = new URLSearchParams(window.location.search).get("building");
       const first = d.buildings.find((b) => b.id === fromUrl) ?? d.buildings[0];
       if (first) setSelected(first.id);
-    });
-    fetch("/api/health").then((r) => r.json()).then((h) => {
-      setServerLlm(h.serverLlm);
-      if (h.serverLlm.enabled) setMode("server");
     });
     probeGpu().then((info) =>
       setBrowser((b) => ({
@@ -160,7 +154,17 @@ export default function AssistantApp() {
   }
 
   const active = messages.find((m) => m.id === activeId) ?? [...messages].reverse().find((m) => m.role === "assistant");
-  const sel = buildings.find((b) => b.id === selected);
+  // Changing buildings clears the previous conversation and its evidence so that
+  // answers for one building cannot be mistaken for another building's results.
+  function chooseBuilding(id) {
+    setSelected(id);
+    setMessages([]);
+    setActiveId(null);
+    setHighlight(null);
+    setChart({ kind: "daily", meter: null });
+    setTab("evidence");
+    setReportOpen(false);
+  }
 
   return (
     <>
@@ -171,25 +175,9 @@ export default function AssistantApp() {
       )}
       <div className="layout">
         <div className="left">
-          <section className="panel buildings" aria-label="Buildings">
-            <h3>Buildings <span className="muted small">({buildings.length} of {meta?.n_buildings_in_dataset ?? "…"})</span></h3>
-            <ul>
-              {buildings.map((b) => (
-                <li key={b.id}>
-                  <button className={`bcard ${b.id === selected ? "on" : ""}`} onClick={() => setSelected(b.id)} aria-pressed={b.id === selected}>
-                    <span className="bid">#{b.id}</span>
-                    <span className="buse">{b.primary_use}</span>
-                    <span className="bmeta">Site {b.site_id} · {num(b.floor_area_m2)} m² · {b.meters.map((m) => METER_LABEL[m].split(" ")[0]).join(", ")}</span>
-                    {b.anomalies > 0 && <span className="bflag" title="Flagged periods">{b.anomalies} flagged</span>}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </section>
           <ModelPanel
             mode={mode}
             setMode={setMode}
-            serverLlm={serverLlm}
             browser={browser}
             setBrowserModel={(id) => setBrowser((b) => ({ ...b, modelId: id, status: b.status === "ready" ? "idle" : b.status }))}
             setBrowserDevice={(device) => {
@@ -205,13 +193,6 @@ export default function AssistantApp() {
         </div>
 
         <main className="panel chat" aria-label="Conversation">
-          <div className="chat-head">
-            <div>
-              <h2>{sel ? `Building ${sel.id} · ${sel.primary_use}` : "Choose a building"}</h2>
-              {sel && <p className="muted small">Site {sel.site_id} · {num(sel.floor_area_m2)} m² · built {sel.year_built ?? "unknown"} · data {meta?.period.start} to {meta?.period.end}</p>}
-            </div>
-            <button className="primary" disabled={!selected} onClick={() => setReportOpen(true)}>Report</button>
-          </div>
           <div className="messages" ref={scroller}>
             {messages.length === 0 && (
               <div className="welcome">
@@ -252,9 +233,20 @@ export default function AssistantApp() {
             )}
           </div>
           <form className="composer" onSubmit={(e) => { e.preventDefault(); send(); }}>
-            <label htmlFor="q" className="sr-only">Question</label>
-            <input id="q" value={input} onChange={(e) => setInput(e.target.value)} placeholder={selected ? `Ask about building ${selected}…` : "Ask about a building…"} autoComplete="off" />
-            <button className="primary" type="submit" disabled={busy || !input.trim()}>{busy ? "…" : "Ask"}</button>
+            <div className="building-picker">
+              <label htmlFor="building-picker">Building</label>
+              <select id="building-picker" aria-label="Choose a building" value={selected ?? ""} disabled={busy || buildings.length === 0} onChange={(e) => chooseBuilding(e.target.value)}>
+                {buildings.length === 0 && <option value="">Loading…</option>}
+                {buildings.map((b) => (
+                  <option key={b.id} value={b.id}>#{b.id} · {b.primary_use}</option>
+                ))}
+              </select>
+            </div>
+            <div className="composer-row">
+              <label htmlFor="q" className="sr-only">Question</label>
+              <input id="q" value={input} onChange={(e) => setInput(e.target.value)} placeholder={selected ? `Ask about building ${selected}…` : "Ask about a building…"} autoComplete="off" />
+              <button className="primary" type="submit" disabled={busy || !selected || !input.trim()}>{busy ? "…" : "Ask"}</button>
+            </div>
           </form>
         </main>
 

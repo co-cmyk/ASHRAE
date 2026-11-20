@@ -1,7 +1,7 @@
 "use client";
 import { BROWSER_MODELS, gpuLabel } from "../lib-client/browserLlm";
 
-export default function ModelPanel({ mode, setMode, serverLlm, browser, setBrowserModel, setBrowserDevice, loadBrowser }) {
+export default function ModelPanel({ mode, setMode, browser, setBrowserModel, setBrowserDevice, loadBrowser }) {
   const pct = browser.progress && browser.progress.total ? Math.round((100 * browser.progress.loaded) / browser.progress.total) : null;
   const gpuName = gpuLabel(browser.gpu);
   const busy = browser.status === "loading";
@@ -13,13 +13,6 @@ export default function ModelPanel({ mode, setMode, serverLlm, browser, setBrows
         <span>
           <strong>Approved template</strong>
           <span className="muted small">Deterministic wording from the analysis tools. No language model.</span>
-        </span>
-      </label>
-      <label className={`opt ${mode === "server" ? "on" : ""} ${serverLlm.enabled ? "" : "disabled"}`}>
-        <input type="radio" name="mode" disabled={!serverLlm.enabled} checked={mode === "server"} onChange={() => setMode("server")} />
-        <span>
-          <strong>Qwen3.5-2B on a server</strong>
-          <span className="muted small">{serverLlm.enabled ? `Connected: ${serverLlm.model}` : "Not configured — set LLM_BASE_URL in Vercel (see README)."}</span>
         </span>
       </label>
       <label className={`opt ${mode === "browser" ? "on" : ""}`}>
@@ -63,9 +56,6 @@ export default function ModelPanel({ mode, setMode, serverLlm, browser, setBrows
           {browser.status !== "ready" && <div className="small muted">Until a model is loaded, answers use the approved template.</div>}
         </div>
       )}
-      <p className="small muted fine">
-        Every answer is checked: numbers must match the evidence, citations must exist, and missing information must be stated. Failed answers are flagged.
-      </p>
     </section>
   );
 }

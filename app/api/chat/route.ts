@@ -32,7 +32,7 @@ export async function POST(req: Request) {
       const send = (obj: unknown) => controller.enqueue(enc.encode(JSON.stringify(obj) + "\n"));
       send({
         type: "plan",
-        plan: { ...plan, messages: mode === "browser" ? plan.messages : undefined },
+        plan: { ...plan, messages: undefined, browserMessages: mode === "browser" ? plan.browserMessages : undefined },
         mode,
         serverLlm: { enabled: cfg.enabled, model: cfg.enabled ? cfg.model : null },
         requestedMode: body.mode ?? "template",

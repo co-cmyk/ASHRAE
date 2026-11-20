@@ -37,7 +37,7 @@ Rules:
 5. Mention uncertainty (data coverage, baseline fit, peer-group limits) when the evidence gives it.
 6. Answer the QUESTION directly in at most 170 words: a short opening sentence, then bullet points. Plain English, no headings.`;
 
-function renderTemplate(plan: Omit<AnswerPlan, "template" | "messages" | "approvedNumbers">): string {
+function renderTemplate(plan: Omit<AnswerPlan, "template" | "messages" | "browserMessages" | "approvedNumbers">): string {
   const lines: string[] = [`**${plan.heading}**`, ""];
   for (const k of plan.keyPoints) lines.push(`- ${k.text}${k.cites.length ? ` [${k.cites.join(", ")}]` : ""}`);
   if (plan.investigate.length) {
@@ -51,7 +51,21 @@ function renderTemplate(plan: Omit<AnswerPlan, "template" | "messages" | "approv
   return lines.join("\n");
 }
 
-function buildMessages(plan: Omit<AnswerPlan, "template" | "messages" | "approvedNumbers">) {
+export const BROWSER_SYSTEM_PROMPT = `You explain building energy evidence. Use ONLY the KEY POINTS. Copy numbers exactly and keep each point's [E#]/[G#] citation. Do not state causes as facts. If MISSING INFORMATION is listed, say what you cannot determine and ask for it. Reply in under 140 words: one opening sentence, then bullets.`;
+
+/** Short prompt for the in-browser model: key points only (they already carry figures and citations).
+ *  Long prompts make WebGPU run out of memory on many laptops. */
+function buildBrowserMessages(plan: Omit<AnswerPlan, "template" | "messages" | "browserMessages" | "approvedNumbers">) {
+  const kp = plan.keyPoints.slice(0, 8).map((k) => `- ${k.text}${k.cites.length ? ` [${k.cites.join(", ")}]` : ""}`).join("\n");
+  const miss = plan.missing.slice(0, 4).map((m) => `- ${m.text}`).join("\n");
+  const user = [`QUESTION: ${plan.question}`, "", "KEY POINTS:", kp || "(none)", ...(miss ? ["", "MISSING INFORMATION:", miss] : [])].join("\n");
+  return [
+    { role: "system" as const, content: BROWSER_SYSTEM_PROMPT },
+    { role: "user" as const, content: user },
+  ];
+}
+
+function buildMessages(plan: Omit<AnswerPlan, "template" | "messages" | "browserMessages" | "approvedNumbers">) {
   const ev = plan.evidence.map((e) => `[${e.id}] ${e.summary}`).join("\n");
   const kp = plan.keyPoints.map((k) => `- ${k.text}${k.cites.length ? ` [${k.cites.join(", ")}]` : ""}`).join("\n");
   const miss = plan.missing.map((m) => `- ${m.text} (${m.why})`).join("\n");
@@ -168,5 +182,5 @@ export function planAnswer(question: string, contextBuildingId: string | null, o
     base.heading,
     question,
   ]);
-  return { ...base, template, messages: buildMessages(base), approvedNumbers };
+  return { ...base, template, messages: buildMessages(base), browserMessages: buildBrowserMessages(base), approvedNumbers };
 }

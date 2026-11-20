@@ -15,6 +15,7 @@ export interface MeterStats {
   annualised_estimate: number | null;
   annualised_note: string;
   intensity_per_m2: number | null;
+  intensity_implausible?: boolean;
   mean_hourly: number | null;
   median_hourly: number | null;
   p95_hourly: number | null;
@@ -262,6 +263,7 @@ export interface AnswerPlan {
   focus: Focus;
   template: string;
   messages: { role: "system" | "user"; content: string }[];
+  browserMessages: { role: "system" | "user"; content: string }[];
   approvedNumbers: number[];
   dataSynthetic: boolean;
 }

@@ -22,7 +22,13 @@ export default function ReportModal({ buildingId, mode, browserReady, browserMod
         setState({ status: "ready", ...data });
         if (mode === "browser" && browserReady) {
           setState((s) => ({ ...s, step: `Writing the executive summary with ${browserModel} in your browser…`, writing: true }));
-          const text = await generateInBrowser(data.messages, null, 420);
+          let text;
+          try {
+            text = await generateInBrowser(data.browserMessages, null, 320);
+          } catch (err) {
+            if (!cancelled) setState((s) => ({ ...s, writing: false, note: `The in-browser model could not write the summary (${err.deviceLost ? "the GPU was reset — try the 0.8B model" : String(err.message).slice(0, 100)}); the approved summary is used.` }));
+            return;
+          }
           const res2 = await fetch("/api/report", {
             method: "POST",
             headers: { "Content-Type": "application/json" },

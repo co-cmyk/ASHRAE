@@ -32,12 +32,18 @@ export async function webgpuAvailable() {
   }
 }
 
+/** Terminate the worker (frees GPU memory); the next load starts a fresh one. */
+export function resetBrowserModel() {
+  if (worker) worker.terminate();
+  worker = null;
+}
+
 export function loadBrowserModel(modelId) {
   getWorker().postMessage({ type: "load", modelId });
 }
 
 /** Generate with the loaded model. Resolves with the final text; onToken receives streamed text. */
-export function generateInBrowser(messages, onToken, maxNewTokens = 380) {
+export function generateInBrowser(messages, onToken, maxNewTokens = 300) {
   const id = `g${++seq}`;
   return new Promise((resolve, reject) => {
     const off = onWorkerMessage((m) => {
@@ -49,7 +55,9 @@ export function generateInBrowser(messages, onToken, maxNewTokens = 380) {
       }
       if (m.type === "error") {
         off();
-        reject(new Error(m.message));
+        const err = new Error(m.message);
+        err.deviceLost = !!m.deviceLost;
+        reject(err);
       }
     });
     getWorker().postMessage({ type: "generate", id, messages, maxNewTokens });

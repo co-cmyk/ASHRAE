@@ -5,7 +5,17 @@ import ModelPanel from "./ModelPanel";
 import ReportModal from "./ReportModal";
 import { AnswerBody, VerificationBadge, sourceLabel } from "./Answer";
 import { readNdjson } from "../lib-client/ndjson";
-import { BROWSER_MODELS, generateInBrowser, loadBrowserModel, onWorkerMessage, webgpuAvailable } from "../lib-client/browserLlm";
+import { BROWSER_MODELS, generateInBrowser, loadBrowserModel, onWorkerMessage, resetBrowserModel, webgpuAvailable } from "../lib-client/browserLlm";
+
+function browserErrorText(e, modelId) {
+  if (e.deviceLost) {
+    const small = /0\.8B/.test(modelId);
+    return `Your GPU stopped responding while running ${modelId.split("/").pop().replace(/-ONNX.*$/, "")} (the browser reset the GPU, usually because it ran out of graphics memory). ` +
+      (small ? "Close other GPU-heavy tabs and reload the model, or use server mode." : "Try the Qwen3.5-0.8B option, close other GPU-heavy tabs, or use server mode.") +
+      " Showing the approved answer.";
+  }
+  return `The in-browser model failed (${String(e.message).slice(0, 140)}). Showing the approved answer.`;
+}
 import { verifyAnswer } from "../lib/verify";
 import { METER_LABEL, num } from "../lib/format";
 
@@ -113,12 +123,16 @@ export default function AssistantApp() {
           if (ev.pendingBrowser && plan) {
             update(aid, { text: "", source: `browser:${modelName(browser.modelId)}` });
             try {
-              const out = await generateInBrowser(plan.messages, (t) => update(aid, (m) => ({ text: (m.text || "") + t })));
+              const out = await generateInBrowser(plan.browserMessages, (t) => update(aid, (m) => ({ text: (m.text || "") + t })));
               const v = verifyAnswer(out, plan.approvedNumbers, plan.evidence.map((e) => e.id), plan.requiresMissingAck);
               update(aid, { text: out, verification: v, status: "done" });
             } catch (e) {
               const v = verifyAnswer(plan.template, plan.approvedNumbers, plan.evidence.map((x) => x.id), plan.requiresMissingAck);
-              update(aid, { text: plan.template, source: "template", verification: v, status: "done", error: `In-browser model failed (${e.message}); showing the approved template.` });
+              update(aid, { text: plan.template, source: "template", verification: v, status: "done", error: browserErrorText(e, browser.modelId) });
+              if (e.deviceLost) {
+                resetBrowserModel();
+                setBrowser((b) => ({ ...b, status: "error", error: "the GPU was reset — reload the model (the 0.8B option needs less memory)" }));
+              }
             }
           }
         }

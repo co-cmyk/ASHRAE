@@ -47,6 +47,6 @@ export async function POST(req: Request) {
     summarySource: source,
     verification,
     note,
-    messages: plan.messages,
+    browserMessages: plan.browserMessages,
   });
 }

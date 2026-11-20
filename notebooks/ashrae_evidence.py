@@ -22,7 +22,7 @@ from datetime import datetime, timezone
 import numpy as np
 import pandas as pd
 
-PIPELINE_VERSION = "1.0.0"
+PIPELINE_VERSION = "1.1.0"
 YEAR_START, YEAR_END = "2016-01-01 00:00", "2016-12-31 23:00"
 HOURS = pd.date_range(YEAR_START, YEAR_END, freq="h")
 N_HOURS = len(HOURS)  # 8784 (2016 is a leap year)
@@ -59,8 +59,14 @@ DQ = {"missing_run_h": 24, "elec_zero_run_h": 24, "flatline_run_h": 48, "thermal
 
 
 # ----------------------------------------------------------------------------- units
+UNIT_OVERRIDES = {}   # filled by resolve_units() when a table factor fails the plausibility check
+PLAUSIBILITY_RATIO = 3.0  # converted site median may be at most 3x away from kWh-as-supplied sites
+
+
 def unit_info(site_id: int, meter: str) -> dict:
     key = (int(site_id), meter)
+    if key in UNIT_OVERRIDES:
+        return UNIT_OVERRIDES[key]
     if key in UNIT_TABLE:
         native, factor = UNIT_TABLE[key]
         if factor is None:
@@ -81,6 +87,48 @@ def unit_info(site_id: int, meter: str) -> dict:
             "status": "unverified",
             "note": "Unit assumed to be kWh as stated in the competition description; the BDG2 unit "
                     "table does not confirm it for this site and meter."}
+
+
+def resolve_units(train: pd.DataFrame, meta: pd.DataFrame) -> list:
+    """Plausibility check for every table conversion (site, meter).
+
+    For each meter type, the reference is the median intensity of buildings at sites whose readings
+    are used as supplied (kWh). If converting a site's readings moves its median intensity more than
+    PLAUSIBILITY_RATIO away from that reference, and the unconverted readings are closer, the factor
+    is not applied and the unit is marked unverified. Returns a log of the decisions."""
+    UNIT_OVERRIDES.clear()
+    g = train.groupby(["building_id", "meter"]).meter_reading.mean().reset_index()
+    g = g.merge(meta[["building_id", "site_id", "square_feet"]], on="building_id")
+    g["meter_name"] = g.meter.map(METER_NAMES)
+    g["native_int"] = g.meter_reading * N_HOURS / (g.square_feet * SQFT_TO_M2)
+    g = g[g.native_int > 0]
+    log = []
+    for (site, mname), grp in g.groupby(["site_id", "meter_name"]):
+        u = unit_info(site, mname)
+        if u["status"] != "converted":
+            continue
+        ref_pool = g[(g.meter_name == mname) & (g.site_id != site)]
+        ref_pool = ref_pool[[unit_info(s_, mname)["status"] in ("verified", "unverified") for s_ in ref_pool.site_id]]
+        if len(ref_pool) < 5:
+            log.append({"site": int(site), "meter": mname, "decision": "kept (no reference sites)"})
+            continue
+        ref = float(ref_pool.groupby("site_id").native_int.median().median())
+        nat = float(grp.native_int.median())
+        conv = nat * u["factor_to_kwh"]
+        d_conv, d_nat = abs(math.log10(conv / ref)), abs(math.log10(nat / ref))
+        entry = {"site": int(site), "meter": mname, "table_unit": u["native_unit"], "factor": u["factor_to_kwh"],
+                 "converted_vs_reference": round(conv / ref, 2), "unconverted_vs_reference": round(nat / ref, 2)}
+        if d_conv > math.log10(PLAUSIBILITY_RATIO) and d_nat < d_conv:
+            UNIT_OVERRIDES[(int(site), mname)] = {
+                "native_unit": "as supplied", "factor_to_kwh": 1.0, "display_unit": "kWh", "status": "unverified",
+                "note": (f"The BDG2 unit table lists {u['native_unit']} (x{u['factor_to_kwh']}) for this site and meter, "
+                         f"but converting gave a median intensity {conv / ref:,.0f}x that of the same meter type at other "
+                         f"sites, so readings are shown as supplied (assumed kWh). Confirm the unit before relying on totals.")}
+            entry["decision"] = "conversion NOT applied (implausible)"
+        else:
+            entry["decision"] = "conversion applied"
+        log.append(entry)
+    return log
 
 
 # ----------------------------------------------------------------------------- loading
@@ -305,6 +353,7 @@ def analyse_meter(y_native: np.ndarray, temp: np.ndarray, site_id: int, meter: s
         "annualised_estimate": r(annualised, 0),
         "annualised_note": "Mean of valid hourly readings x 8,784 hours (gaps filled with the average).",
         "intensity_per_m2": r(annualised / area_m2, 1) if annualised and area_m2 else None,
+        "intensity_implausible": bool(annualised and area_m2 and unit["status"] != "native" and annualised / area_m2 > 1500),
         "mean_hourly": r(yv.mean(), 2) if n_valid else None,
         "median_hourly": r(np.median(yv), 2) if n_valid else None,
         "p95_hourly": r(np.percentile(yv, 95), 2) if n_valid else None,
@@ -556,6 +605,7 @@ def build_assistant_data(data_dir: str, building_ids=None, n_buildings=16, synth
                          gbm_daily=None):
     train, meta, weather = load_raw(data_dir)
     wx = local_weather(weather)
+    unit_log = resolve_units(train, meta)
     if building_ids is None:
         building_ids = select_buildings(train, meta, n_buildings)
     inten = building_intensities(train, meta)
@@ -596,7 +646,9 @@ def build_assistant_data(data_dir: str, building_ids=None, n_buildings=16, synth
             "pipeline_version": PIPELINE_VERSION, "period": {"start": YEAR_START[:10], "end": YEAR_END[:10]},
             "n_buildings_in_dataset": int(meta.building_id.nunique()),
             "methods": {
-                "units": "Kaggle units per site/meter from the Building Data Genome 2 wiki; converted to kWh where a factor exists.",
+                "units": "Kaggle units per site/meter from the Building Data Genome 2 wiki, converted to kWh where a factor exists "
+                         "and the converted values pass a plausibility check against kWh-as-supplied sites (within 3x of their median); "
+                         "otherwise readings are shown as supplied and marked unverified.",
                 "weather_alignment": "Weather timestamps shifted from UTC to site-local time with per-site offsets.",
                 "baseline": "LBNL Time-Of-Week-and-Temperature regression, leave-one-month-out cross-fitted.",
                 "fit_quality": "ASHRAE Guideline 14 CV(RMSE) and NMBE on out-of-sample predictions "
@@ -610,6 +662,7 @@ def build_assistant_data(data_dir: str, building_ids=None, n_buildings=16, synth
                                 f"flat-lines >= {DQ['flatline_run_h']} h, thermal zero runs >= {DQ['thermal_zero_run_h']} h.",
             },
             "thresholds": {"g14": G14, "anomaly": ANOMALY, "data_quality": DQ, "temp_knots_c": TEMP_KNOTS_C},
+            "unit_checks": unit_log,
         },
         "buildings": buildings,
     }

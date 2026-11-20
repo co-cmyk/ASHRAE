@@ -35,7 +35,9 @@ async function load(modelId) {
     post({ type: "status", text: `Downloading ${modelId} (first time only)…` });
     processor = await AutoProcessor.from_pretrained(modelId, { progress_callback: progress });
     // Try the dtype layouts published for Qwen3.5 ONNX exports, most compact first.
+    // The vision encoder is never used here (text only), so try its smallest variant first to save GPU memory.
     const layouts = [
+      { embed_tokens: "q4", vision_encoder: "q4", decoder_model_merged: "q4" },
       { embed_tokens: "q4", vision_encoder: "fp16", decoder_model_merged: "q4" },
       { embed_tokens: "q4f16", vision_encoder: "fp16", decoder_model_merged: "q4f16" },
       "q4f16",
@@ -85,7 +87,7 @@ async function generate(id, messages, maxNewTokens) {
         post({ type: "token", id, text: t });
       },
     });
-    const output = await model.generate({ ...inputs, max_new_tokens: maxNewTokens || 380, do_sample: false, repetition_penalty: 1.05, streamer });
+    const output = await model.generate({ ...inputs, max_new_tokens: maxNewTokens || 300, do_sample: false, repetition_penalty: 1.05, streamer });
     let final = streamed;
     try {
       const promptLen = inputs.input_ids.dims.at(-1);
@@ -97,7 +99,16 @@ async function generate(id, messages, maxNewTokens) {
     final = final.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
     post({ type: "done", id, text: final });
   } catch (e) {
-    post({ type: "error", id, stage: "generate", message: String((e && e.message) || e) });
+    const message = String((e && e.message) || e);
+    // "Device was lost" = the browser reset the GPU (out of memory or driver timeout).
+    // The ONNX sessions are dead after that, so drop them; the page will offer a reload.
+    const deviceLost = /device (was )?lost|mapAsync|OrtRun|GPUBuffer|out of memory/i.test(message);
+    if (deviceLost) {
+      model = null;
+      processor = null;
+      loadedId = null;
+    }
+    post({ type: "error", id, stage: "generate", deviceLost, message });
   }
 }
 

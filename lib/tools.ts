@@ -394,7 +394,8 @@ export function summaryTool(ctx: Ctx) {
   const b = ctx.b!;
   const p = b.profile;
   const e1 = profileEvidence(ctx);
-  ctx.point(`Building ${p.building_id} is a ${p.primary_use.toLowerCase()} building of ${num(p.floor_area_m2)} m² on site ${p.site_id}, with ${p.meters.length} meter type(s): ${p.meters.map((m) => METER_LABEL[m].toLowerCase()).join(", ")}.`, e1);
+  const use = p.primary_use.toLowerCase();
+  ctx.point(`Building ${p.building_id} is ${/^[aeiou]/.test(use) ? "an" : "a"} ${use} building of ${num(p.floor_area_m2)} m² on site ${p.site_id}, with ${p.meters.length} meter type(s): ${p.meters.map((m) => METER_LABEL[m].toLowerCase()).join(", ")}.`, e1);
   const meters = metersFor(ctx);
   for (const mt of meters) {
     const m = b.meters[mt]!;
@@ -422,7 +423,11 @@ export function summaryTool(ctx: Ctx) {
   }
   for (const mt of meters) {
     const mm = b.meters[mt]!;
-    if (mm.unit.status === "unverified") ctx.need(`Confirmed unit for the ${METER_LABEL[mt].toLowerCase()} meter`, mm.unit.note);
+    if (mm.stats.intensity_implausible) {
+      ctx.need(`Confirmed unit for the ${METER_LABEL[mt].toLowerCase()} meter`, `An intensity of ${num(mm.stats.intensity_per_m2, 1)} ${mm.unit.display_unit}/m²/yr is far above what buildings normally use, so the unit or conversion is probably wrong; treat these totals as unreliable.`);
+    } else if (mm.unit.status === "unverified") {
+      ctx.need(`Confirmed unit for the ${METER_LABEL[mt].toLowerCase()} meter`, mm.unit.note);
+    }
   }
 }
 

@@ -113,7 +113,8 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
 .chat { display: flex; flex-direction: column; height: calc(100vh - 5.4rem); min-height: 520px; position: sticky; top: 4.2rem; }
 @media (max-width: 860px) { .chat { position: static; height: 75vh; } }
 .messages { flex: 1; overflow: auto; padding: 1rem; display: flex; flex-direction: column; gap: 0.9rem; }
-.welcome { margin: auto 0; padding: 1rem; }
+/* Keep the empty-conversation guidance at the top rather than vertically centring it. */
+.welcome { margin: 0; padding: 0.25rem 1rem 1rem; }
 .welcome h3 { margin: 0 0 0.3rem; }
 .chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.8rem; }
 .msg { display: flex; }

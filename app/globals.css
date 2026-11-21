@@ -1,56 +1,43 @@
 /* Computer Modern Sans is loaded as a web font so users do not need it installed. */
 @import url("https://cdn.jsdelivr.net/gh/vsalvino/computer-modern@main/fonts/sans.css");
 
+/*
+ * Blue-poppy palette, shared with the Who Did the Work? app.
+ * Warm ivory canvas, powder-blue selection, navy controls, muted sage
+ * evidence panels and restrained burnt-orange highlights.
+ * Computer Modern Sans Serif is retained throughout.
+ */
 :root {
   color-scheme: light;
-  --page: #f9f9f7;
-  --surface: #fcfcfb;
-  --surface-2: #f3f2ee;
-  --text: #0b0b0b;
-  --text-secondary: #52514e;
-  --muted: #898781;
-  --grid: #e1e0d9;
-  --axis: #c3c2b7;
-  --border: rgba(11, 11, 11, 0.1);
-  --series-1: #2a78d6;
-  --series-2: #eb6834;
-  --series-3: #1baf7a;
-  --flag-high: rgba(236, 131, 90, 0.22);
-  --flag-low: rgba(42, 120, 214, 0.14);
-  --band: rgba(137, 135, 129, 0.16);
-  --accent: #2a78d6;
-  --accent-ink: #ffffff;
-  --ok: #006300;
-  --warn-bg: #fff6e0;
-  --warn-border: #fab219;
-  --err: #b42323;
+  --page: #F7F6F1;
+  --surface: #FFFEFB;
+  --surface-2: #EDF0E8;
+  --text: #24344A;
+  --text-secondary: #4B5C6D;
+  --muted: #667786;
+  --grid: #E1E6E3;
+  --axis: #9CAAB1;
+  --border: #D2D7D5;
+  /* Chart lines: blue for actual, orange for baseline, sage for model. */
+  --series-1: #315D95;
+  --series-2: #B95728;
+  --series-3: #45735B;
+  --flag-high: rgba(185, 87, 40, 0.16);
+  --flag-low: rgba(49, 93, 149, 0.14);
+  --band: rgba(146, 151, 124, 0.22);
+  --accent: #1B355F;
+  --accent-ink: #FFFFFF;
+  --accent-soft: #E6EEF7;
+  --highlight: #C86432;
+  --highlight-soft: #F9E9DC;
+  --sage-soft: #EDF0E8;
+  --ok: #37624C;
+  --warn-bg: #F9E9DC;
+  --warn-border: #B95728;
+  --err: #B42318;
   --radius: 10px;
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.04);
-  font-family: "Computer Modern Sans", "CMU Sans Serif", sans-serif;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-    --page: #0d0d0d;
-    --surface: #1a1a19;
-    --surface-2: #232321;
-    --text: #f0efec;
-    --text-secondary: #c3c2b7;
-    --muted: #898781;
-    --grid: #2c2c2a;
-    --axis: #383835;
-    --border: rgba(255, 255, 255, 0.1);
-    --series-1: #3987e5;
-    --series-2: #d95926;
-    --series-3: #199e70;
-    --flag-high: rgba(236, 131, 90, 0.2);
-    --flag-low: rgba(57, 135, 229, 0.18);
-    --band: rgba(137, 135, 129, 0.2);
-    --accent: #3987e5;
-    --ok: #0ca30c;
-    --warn-bg: #2b2412;
-    --err: #e66767;
-  }
+  --shadow: 0 1px 2px rgba(27, 53, 95, 0.045), 0 5px 20px rgba(27, 53, 95, 0.055);
+  font-family: "Computer Modern Sans", "CMU Sans Serif", "Segoe UI", system-ui, sans-serif;
 }
 
 * { box-sizing: border-box; }
@@ -91,7 +78,7 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
 .opt { display: flex; gap: 0.6rem; padding: 0.55rem 1rem; align-items: flex-start; cursor: pointer; }
 .opt input { margin-top: 0.25rem; }
 .opt > span { display: flex; flex-direction: column; }
-.opt.on { background: color-mix(in srgb, var(--accent) 7%, transparent); }
+.opt.on { background: var(--accent-soft); }
 .browser-model { padding: 0.25rem 1rem 0.5rem 2.6rem; display: flex; flex-direction: column; gap: 0.45rem; }
 .browser-model select, .select select { font: inherit; padding: 0.35rem 0.5rem; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
 .progress .bar { height: 6px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
@@ -106,7 +93,7 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
 .chip:hover { border-color: var(--accent); }
 .chip.small { font-size: 0.78rem; padding: 0.2rem 0.6rem; }
 .seg { display: inline-flex; gap: 0.35rem; flex-wrap: wrap; }
-.seg button.on { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.seg button.on { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); font-weight: 600; }
 .seg.wrap { margin: 0.5rem 0; }
 
 /* chat */
@@ -120,7 +107,7 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
 .msg { display: flex; }
 .msg.user { justify-content: flex-end; }
 .msg.user .bubble { background: var(--accent); color: var(--accent-ink); border-radius: 14px 14px 4px 14px; padding: 0.55rem 0.85rem; max-width: 80%; }
-.msg.assistant .bubble { background: var(--surface-2); border-radius: 14px 14px 14px 4px; padding: 0.7rem 0.95rem; max-width: 100%; border: 1px solid transparent; }
+.msg.assistant .bubble { background: var(--accent-soft); border-radius: 14px 14px 14px 4px; padding: 0.7rem 0.95rem; max-width: 100%; border: 1px solid transparent; }
 .msg.assistant.active .bubble { border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
 .src { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-secondary); margin-bottom: 0.25rem; }
 .answer p, .answer ul { margin: 0.35rem 0; }
@@ -146,7 +133,7 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
 @media (max-width: 1280px) { .evidence { position: static; max-height: none; } }
 .tabs { display: flex; gap: 0.25rem; padding: 0.5rem 0.5rem 0; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--surface); z-index: 2; }
 .tabs button { background: none; border: 0; border-bottom: 2px solid transparent; padding: 0.5rem 0.75rem; color: var(--text-secondary); }
-.tabs button.on { border-color: var(--accent); color: var(--text); font-weight: 600; }
+.tabs button.on { border-color: var(--series-1); color: var(--accent); background: var(--accent-soft); font-weight: 600; }
 .ev-list { padding: 0.75rem; display: flex; flex-direction: column; gap: 0.6rem; }
 .route { font-size: 0.82rem; padding: 0.2rem 0.25rem 0.4rem; }
 .ev-card { border: 1px solid var(--border); border-radius: 9px; padding: 0.65rem 0.75rem; background: var(--surface); transition: box-shadow 0.2s, border-color 0.2s; }
@@ -241,3 +228,23 @@ table.eval tr.fail td { background: color-mix(in srgb, var(--err) 6%, transparen
   .top nav a { font-size: 0.85rem; }
   .banner { margin: 0.5rem 0.75rem 0; }
 }
+
+/* Accent details tuned to the Groupwork palette, without changing layout. */
+::selection { background: var(--highlight-soft); color: var(--text); }
+.top { border-top: 3px solid var(--highlight); }
+.brand, .panel h3, .page h1, .page h2, .modal-head h2 { color: var(--accent); }
+.top nav a:hover, .top nav a:focus-visible { color: var(--accent); }
+.top nav a { text-underline-offset: 4px; }
+.primary:hover:not(:disabled) { background: #294B79; }
+.primary:focus-visible, .chip:focus-visible, .tabs button:focus-visible { outline: 3px solid #316C9E; outline-offset: 2px; }
+.chip:hover, .ev-card.highlight { border-color: var(--series-1); }
+.chip:focus-visible, .composer-row input:focus-visible, .building-picker select:focus-visible,
+.browser-model select:focus-visible, .select select:focus-visible { border-color: var(--series-1); }
+.opt input, input[type="radio"], input[type="checkbox"] { accent-color: var(--accent); }
+.ev-id.g { color: #FFFFFF; }
+.ev-id.m { background: #647481; }
+.ev-card.missing { border-left: 3px solid var(--highlight); }
+.chart .tick { fill: var(--text-secondary); }
+.chart .tick.strong { fill: var(--text); }
+.verify.warn, .note, .banner { color: var(--text); }
+.tile-value { color: var(--accent); }
